@@ -29,24 +29,45 @@ import tracemalloc
 """
 El controlador se encarga de mediar entre la vista y el modelo.
 """
-
+def archiv(filename):
+    input_file = csv.DictReader(open(filename, encoding='utf-8'))
+    return input_file
 
 def new_controller():
     """
     Crea una instancia del modelo
     """
     #TODO: Llamar la función del modelo que crea las estructuras de datos
-    pass
+    control = {"model": None}
+    control["model"] = model.new_data_structs()
+    return control
+
 
 
 # Funciones para la carga de datos
 
-def load_data(control, filename):
+def load_data(control, filename1,filename2 ):
     """
     Carga los datos del reto
     """
     # TODO: Realizar la carga de datos
-    pass
+    
+    input_file= archiv(filename1)
+    for i in input_file:
+        model.add_data_wolves(control["model"], i)
+   
+    input_file= archiv(filename2)
+    for i in input_file:
+        model.add_data_tracks(control["model"], i)
+    
+    model.conexiones_tracks(control["model"])    
+        
+    total_de_lobos_reconocidos= model.total_lobos_registrados(control["model"])
+    total_puntos_encuentro = model.total_puntos_encuentro(control["model"])
+    tabla_mayor, tabla_menor = model.primeros_ultimos(control["model"])
+    
+    
+    return (total_de_lobos_reconocidos,total_puntos_encuentro, tabla_mayor, tabla_menor)
 
 
 # Funciones de ordenamiento

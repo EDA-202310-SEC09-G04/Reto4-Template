@@ -29,7 +29,7 @@ from DISClib.ADT import queue as qu
 from DISClib.ADT import map as mp
 from DISClib.DataStructures import mapentry as me
 assert cf
-from tabulate import tabulate
+from tabulate import tabulate as tab
 import traceback
 
 """
@@ -45,7 +45,8 @@ def new_controller():
         Se crea una instancia del controlador
     """
     #TODO: Llamar la función del controlador donde se crean las estructuras de datos
-    pass
+    control = controller.new_controller()
+    return control
 
 
 def print_menu():
@@ -60,14 +61,46 @@ def print_menu():
     print("8- Ejecutar Requerimiento 7")
     print("9- Ejecutar Requerimiento 8")
     print("0- Salir")
+    
+def arch(tamanio_lista):
+    if tamanio_lista == 1:
+        tamanio_lista = "-small"
+        
+    if tamanio_lista == 2:
+        tamanio_lista = "-5pct"
+        
+    if tamanio_lista == 3:
+        tamanio_lista = "-10pct"
+        
+    if tamanio_lista == 4:
+        tamanio_lista = "-20pct"
+        
+    if tamanio_lista == 5:
+        tamanio_lista = "-30pct"
+        
+    if tamanio_lista == 6:
+        tamanio_lista = "-50pct"
+        
+    if tamanio_lista == 7:
+        tamanio_lista = "-80pct"
+        
+    if tamanio_lista == 8:
+        tamanio_lista = "-large"
+    
+    return 'Data/BA-Grey-Wolf-individuals-utf8' + tamanio_lista +'.csv', 'Data/BA-Grey-Wolf-tracks-utf8' + tamanio_lista +'.csv'
 
-
-def load_data(control):
+def load_data(control, tamanio_lista):
     """
     Carga los datos
     """
     #TODO: Realizar la carga de datos
-    pass
+    
+    file_name1, filename2= arch(tamanio_lista)
+    total_de_lobos_reconocidos,total_puntos_encuentro, tabla_mayor, tabla_menor = controller.load_data(control, file_name1, filename2)
+    print(total_de_lobos_reconocidos)
+    print(total_puntos_encuentro)
+
+    return tabla_mayor, tabla_menor
 
 
 def print_data(control, id):
@@ -154,10 +187,15 @@ if __name__ == "__main__":
     while working:
         print_menu()
         inputs = input('Seleccione una opción para continuar\n')
+        
         try:
             if int(inputs) == 1:
+                tamanio_lista = int(input("Digite el tipo de archivo que quiere escoger: small(1), 5pct(2), 10cpt(3), 20pct(4), 30pct(5), 50pct(6), 80pct(7), large(8): "))
                 print("Cargando información de los archivos ....\n")
-                data = load_data(control)
+                tabla_mayor, tabla_menor = load_data(control,tamanio_lista)
+                print(tab(tabla_mayor, headers="keys", tablefmt= "grid", maxcolwidths=11))
+                print(tab(tabla_menor, headers="keys", tablefmt= "grid", maxcolwidths=11))
+                
             elif int(inputs) == 2:
                 print_req_1(control)
 

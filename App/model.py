@@ -47,7 +47,8 @@ from DISClib.Algorithms.Sorting import selectionsort as se
 from DISClib.Algorithms.Sorting import mergesort as merg
 from DISClib.Algorithms.Sorting import quicksort as quk
 assert cf
-
+import datetime
+import math
 """
 Se define la estructura de un catálogo de videos. El catálogo tendrá
 dos listas, una para los videos, otra para las categorias de los mismos.
@@ -62,18 +63,86 @@ def new_data_structs():
     manera vacía para posteriormente almacenar la información.
     """
     #TODO: Inicializar las estructuras de datos
-    pass
+    registro = { "mapa_lobos": None, 
+                 "grafo_general": None, 
+                 "mapa_seguimiento" :None, 
+                 "nodos_encuentro": None
+                
+             }
 
-
+    registro["mapa_lobos"] = mp.newMap()
+    registro["mapa_seguimiento"] = mp.newMap()
+    registro["grafo_general"] = gr.newGraph()
+    registro["nodos_encuentro"] = lt.newList()
+    return registro
 # Funciones para agregar informacion al modelo
 
-def add_data(data_structs, data):
+def add_data_wolves(data_structs, data):
     """
     Función para agregar nuevos elementos a la lista
     """
     #TODO: Crear la función para agregar elementos a una lista
-    pass
+    
+    mapa_lobos = data_structs["mapa_lobos"] # mapa con id e información de lobos
+    mp.put(mapa_lobos,data["animal-id"] ,data )
 
+def add_data_tracks(data_structs, data): 
+    
+    mapa_tracks = data_structs["mapa_seguimiento"] # cramos mapa de seguimiento con los id de los lobos 
+    time_stamp = int(datetime.datetime.strptime(data["timestamp"], "%Y-%m-%d %H:%M").timestamp()) # tiempo en el que pasó 
+    if mp.contains(mapa_tracks,data["individual-local-identifier"]): # si ya tenemos el id
+        omap = me.getValue( mp.get(mapa_tracks,data["individual-local-identifier"] )) # extraemos el order map 
+        om.put(omap,time_stamp ,data ) # añadimos al order map el la información del id ya ordenada 
+    else: 
+        omap = om.newMap() # creamos el order map
+        om.put(omap,time_stamp ,data ) # añadimos al order map el la información del id ya ordenada 
+        mp.put (mapa_tracks, data["individual-local-identifier"], omap ) # añadimos al mapa grande toda la información
+    
+    v_encuentro = str(round(float(data["location-long"]), 4)).replace(".", "p").replace("-", "m") + "_" +str(round(float( data["location-lat"]),4)).replace(".", "p").replace("-", "m") # filtrar datos lat y long
+    v_seguimiento = v_encuentro + "_" + data["individual-local-identifier"] # juntamos todo con el id del animal (cramos representacion nodo)
+    if not gr.containsVertex(data_structs["grafo_general"], v_encuentro):  # preguntamos si v_encuentro no existe en el grafo porque se puede repetir
+        gr.insertVertex(data_structs["grafo_general"],v_encuentro ) # añadimos al grafo 
+        lt.addLast(data_structs["nodos_encuentro"],v_encuentro ) # añadir nodos en el orden que aparecen
+    if not gr.containsVertex(data_structs["grafo_general"], v_seguimiento):  # preguntamos si v_encuentro no existe porque puede retornar un lugar
+        gr.insertVertex(data_structs["grafo_general"],v_seguimiento ) # añadimos al grafo 
+    
+    if gr.getEdge(data_structs["grafo_general"],v_encuentro,v_seguimiento ) == None: 
+        gr.addEdge(data_structs["grafo_general"],v_encuentro, v_seguimiento)
+
+def conexiones_tracks (data_structs):  # se van a conectar los tracks por lobo
+     mapa_tracks = data_structs["mapa_seguimiento"]
+     lobos = lt.iterator(mp.keySet(mapa_tracks)) # se saca la información por lobo
+     for lobo_id in lobos: 
+        omap = me.getValue( mp.get(mapa_tracks,lobo_id)) # extraemos el order map  
+        fechas = om.values(omap, om.minKey(omap), om.maxKey(omap)) # extraemos los valores de todas las fechas organizados retorna lista
+        for posicion in range(1,lt.size(fechas)): #recorrer todas las fechas de la lista 
+            
+            seguimiento1= lt.getElement(fechas,posicion ) # datos del seguimiento de un lobo
+            v_encuentro1 = str(round(float(seguimiento1["location-long"]),4)).replace(".", "p").replace("-", "m") + "_" + str(round(float(seguimiento1["location-lat"]),4)).replace(".", "p").replace("-", "m") # filtrar datos lat y long
+            v_seguimiento1 = v_encuentro1 + "_" + seguimiento1["individual-local-identifier"] # juntamos todo con el id del animal (cramos representacion nodo)
+   
+            seguimiento2= lt.getElement(fechas,posicion +1 ) # datos del seguimiento del lobo en un punto diferente
+            v_encuentro2 = str(round(float(seguimiento2["location-long"]),4)).replace(".", "p").replace("-", "m") + "_" + str(round(float(seguimiento2["location-lat"]),4)).replace(".", "p").replace("-", "m") # filtrar datos lat y long
+            v_seguimiento2 = v_encuentro2+ "_" + seguimiento2["individual-local-identifier"] # juntamos todo con el id del animal (cramos representacion nodo)
+            #calculo entre dos puntos 
+            # primero extraemos long y lat de los puntos
+            long1 = float(seguimiento1["location-long"])
+            long2 = float(seguimiento2["location-long"])
+            lat1 = float(seguimiento1["location-lat"])
+            lat2 = float(seguimiento2["location-lat"])
+            # aplicar formula
+            paso1_formula = (math.sin(((lat1-lat2)/2)))**2
+            paso2_formula = math.cos(lat2)*math.cos(lat1) 
+            paso3_formula = paso2_formula * (math.sin(((long1-long2)/2)))**2
+            paso4_formula = paso1_formula + paso3_formula
+            paso5_formula = math.sqrt(float(paso4_formula))
+            distancia = 2 * math.asin(paso5_formula)*6371
+            
+            gr.addEdge (data_structs["grafo_general"],v_seguimiento1, v_seguimiento2, round(distancia, 4)) #unir los puntos de seguimiento por lobo 
+            
+   
+             
+            
 
 # Funciones para creacion de datos
 
@@ -199,3 +268,54 @@ def sort(data_structs):
     """
     #TODO: Crear función de ordenamiento
     pass
+
+
+def total_lobos_registrados(data_structs):
+    """
+    Retorna el tamaño de la lista de datos
+    """
+    #TODO: Crear la función para obtener el tamaño de una lista
+
+    return mp.size(data_structs["mapa_lobos"])
+
+def  total_puntos_encuentro(data_structs):
+    return lt.size(data_structs["nodos_encuentro"])
+
+def primeros_ultimos(data_structs): 
+    
+    mayores =  lt.subList(data_structs["nodos_encuentro"], 1, 5) 
+    menores = lt.subList(data_structs["nodos_encuentro"],(lt.size(data_structs["nodos_encuentro"])-4) , 5)
+
+    tabla_mayores = {}
+    tabla_mayores["Identificador_punto_encuentro "] = []
+    tabla_mayores["Lat"] = []
+    tabla_mayores["long"] = []
+    tabla_mayores["numero_encuentros"] = []
+    for nodo_mayores in lt.iterator(mayores):
+        tabla_mayores["Identificador_punto_encuentro "].append( nodo_mayores)
+        lat = float(str(nodo_mayores).split("_")[1].replace("p", ".").replace("m","-"))
+        latitud = lat 
+        lon = float(str(nodo_mayores).split("_")[0].replace("p", ".").replace("m","-"))
+        longitud = lon
+        tabla_mayores["Lat"].append(latitud)
+        tabla_mayores["numero_encuentros"].append( lt.size(gr.adjacents(data_structs["grafo_general"],nodo_mayores ))) # nodos adyacentes del nodo
+        tabla_mayores["long"].append(longitud)
+        
+        
+
+    tabla_menores = {}
+    tabla_menores["Identificador_punto_encuentro "] = []
+    tabla_menores["Lat"] = []
+    tabla_menores["long"] = []
+    tabla_menores["numero_encuentros"] = []
+    for nodo_menores in lt.iterator(menores):
+        tabla_menores["Identificador_punto_encuentro "].append(nodo_menores)
+        lat = float(str(nodo_menores).split("_")[1].replace("p", ".").replace("m","-"))
+        latitud = lat 
+        lon = float(str(nodo_menores).split("_")[0].replace("p", ".").replace("m","-"))
+        longitud = lon
+        tabla_menores["Lat"].append(latitud)
+        tabla_menores["numero_encuentros"].append(lt.size(gr.adjacents(data_structs["grafo_general"],nodo_menores ))) # nodos adyacentes del nodo
+        tabla_menores["long"].append(longitud)
+        
+    return tabla_mayores, tabla_menores
