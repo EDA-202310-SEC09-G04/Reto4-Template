@@ -100,7 +100,7 @@ def load_data(control, tamanio_lista):
     print(total_de_lobos_reconocidos)
     print(total_puntos_encuentro)
 
-    return tabla_mayor, tabla_menor
+    return  tabla_mayor, tabla_menor
 
 
 def print_data(control, id):

@@ -58,16 +58,19 @@ def load_data(control, filename1,filename2 ):
    
     input_file= archiv(filename2)
     for i in input_file:
+        model.add_hash_puntos(control["model"], i)
+    input_file= archiv(filename2)
+    for i in input_file:
         model.add_data_tracks(control["model"], i)
     
     model.conexiones_tracks(control["model"])    
         
     total_de_lobos_reconocidos= model.total_lobos_registrados(control["model"])
     total_puntos_encuentro = model.total_puntos_encuentro(control["model"])
-    tabla_mayor, tabla_menor = model.primeros_ultimos(control["model"])
+    tabla_mayor, tabla_menor, data_structs = model.primeros_ultimos(control["model"])
     
     
-    return (total_de_lobos_reconocidos,total_puntos_encuentro, tabla_mayor, tabla_menor)
+    return total_de_lobos_reconocidos,total_puntos_encuentro, tabla_mayor, tabla_menor
 
 
 # Funciones de ordenamiento

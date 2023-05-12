@@ -63,18 +63,21 @@ def new_data_structs():
     manera vacía para posteriormente almacenar la información.
     """
     #TODO: Inicializar las estructuras de datos
-    registro = { "mapa_lobos": None, 
+    data_structs = { "mapa_lobos": None, 
                  "grafo_general": None, 
                  "mapa_seguimiento" :None, 
-                 "nodos_encuentro": None
+                 "nodos_encuentro": None,
+                 "nodo_seguimiento":None
                 
              }
 
-    registro["mapa_lobos"] = mp.newMap()
-    registro["mapa_seguimiento"] = mp.newMap()
-    registro["grafo_general"] = gr.newGraph()
-    registro["nodos_encuentro"] = lt.newList()
-    return registro
+    data_structs["mapa_lobos"] = mp.newMap()
+    data_structs["mapa_seguimiento"] = mp.newMap()
+    data_structs["grafo_general"] = gr.newGraph(cmpfunction=cmp1)
+    data_structs["nodos_encuentro"] = lt.newList()
+    data_structs["hash_puntos"] = mp.newMap()
+    data_structs["nodo_seguimiento"] = lt.newList()
+    return data_structs
 # Funciones para agregar informacion al modelo
 
 def add_data_wolves(data_structs, data):
@@ -86,6 +89,43 @@ def add_data_wolves(data_structs, data):
     mapa_lobos = data_structs["mapa_lobos"] # mapa con id e información de lobos
     mp.put(mapa_lobos,data["animal-id"] ,data )
 
+def add_hash_puntos(data_structs, data):
+    identificador =  str(round(float(data["location-long"]), 4)).replace(".", "p").replace("-", "m") + "_" +str(round(float( data["location-lat"]),4)).replace(".", "p").replace("-", "m") # filtrar datos lat y long
+    id_lobo =  identificador + "_" + str(data["individual-local-identifier"]) # filtrar datos lat y long
+    
+    contain_gather = mp.contains(data_structs["hash_puntos"],identificador)
+    if contain_gather:
+        lista = me.getValue(mp.get(data_structs["hash_puntos"], identificador))
+        centinela = False
+        for i in lt.iterator(lista):
+            if i == data["individual-local-identifier"]:
+                centinela = True
+        if not centinela:
+            lt.addLast(lista, data["individual-local-identifier"])
+    elif not contain_gather:
+        lista = lt.newList()
+        lt.addLast(lista, data["individual-local-identifier"])
+
+    contasin_wolf =  mp.contains(data_structs["hash_puntos"], id_lobo)
+    if contasin_wolf:
+        lista2 = me.getValue(mp.get(data_structs["hash_puntos"], id_lobo))  
+        centinela = False
+        for i in lt.iterator(lista2):
+            # print("bla lista 2!!!!!!!!")
+            if i == data["individual-local-identifier"]:
+                centinela = True
+        if not centinela:
+            lt.addLast(lista2, data["individual-local-identifier"])
+    elif not contasin_wolf:
+        lista2 = lt.newList()
+        lt.addLast(lista2, data["individual-local-identifier"])
+    # print("wolf node", id_lobo)
+    # print("gather node", identificador)
+    mp.put(data_structs["hash_puntos"], identificador, lista)
+    mp.put(data_structs["hash_puntos"], id_lobo, lista2)
+    return data_structs
+            
+        
 def add_data_tracks(data_structs, data): 
     
     mapa_tracks = data_structs["mapa_seguimiento"] # cramos mapa de seguimiento con los id de los lobos 
@@ -99,24 +139,34 @@ def add_data_tracks(data_structs, data):
         mp.put (mapa_tracks, data["individual-local-identifier"], omap ) # añadimos al mapa grande toda la información
     
     v_encuentro = str(round(float(data["location-long"]), 4)).replace(".", "p").replace("-", "m") + "_" +str(round(float( data["location-lat"]),4)).replace(".", "p").replace("-", "m") # filtrar datos lat y long
-    v_seguimiento = v_encuentro + "_" + data["individual-local-identifier"] # juntamos todo con el id del animal (cramos representacion nodo)
-    if not gr.containsVertex(data_structs["grafo_general"], v_encuentro):  # preguntamos si v_encuentro no existe en el grafo porque se puede repetir
-        gr.insertVertex(data_structs["grafo_general"],v_encuentro ) # añadimos al grafo 
-        lt.addLast(data_structs["nodos_encuentro"],v_encuentro ) # añadir nodos en el orden que aparecen
-    if not gr.containsVertex(data_structs["grafo_general"], v_seguimiento):  # preguntamos si v_encuentro no existe porque puede retornar un lugar
-        gr.insertVertex(data_structs["grafo_general"],v_seguimiento ) # añadimos al grafo 
-    
-    if gr.getEdge(data_structs["grafo_general"],v_encuentro,v_seguimiento ) == None: 
-        gr.addEdge(data_structs["grafo_general"],v_encuentro, v_seguimiento)
+    v_seguimiento = v_encuentro + "_" + str(data["individual-local-identifier"]) # juntamos todo con el id del animal (cramos representacion nodo)
+    # print("id_wolf:", v_seguimiento)
+    lista = me.getValue(mp.get(data_structs["hash_puntos"], v_encuentro))
+    lista2 = me.getValue(mp.get(data_structs["hash_puntos"], v_seguimiento))
+    # print(lista2)
+    if lt.size(lista) > 1:
+        if not gr.containsVertex(data_structs["grafo_general"], v_encuentro):  # preguntamos si v_encuentro no existe en el grafo porque se puede repetir
+            gr.insertVertex(data_structs["grafo_general"],v_encuentro ) # añadimos al grafo 
+            lt.addLast(data_structs["nodos_encuentro"], v_encuentro ) # añadir nodos en el orden que aparecen
+    if lt.size(lista2) > 0:
+        if not gr.containsVertex(data_structs["grafo_general"], v_seguimiento):  # preguntamos si v_encuentro no existe porque puede retornar un lugar
+            gr.insertVertex(data_structs["grafo_general"],v_seguimiento ) # añadimos al grafo 
+            lt.addLast(data_structs["nodo_seguimiento"], v_seguimiento ) 
+
+        # if gr.getEdge(data_structs["grafo_general"],v_encuentro,v_seguimiento ) == None: 
+        #       gr.addEdge(data_structs["grafo_general"],v_encuentro, v_seguimiento)
+
+    return data_structs
+
 
 def conexiones_tracks (data_structs):  # se van a conectar los tracks por lobo
-     mapa_tracks = data_structs["mapa_seguimiento"]
-     lobos = lt.iterator(mp.keySet(mapa_tracks)) # se saca la información por lobo
-     for lobo_id in lobos: 
+    mapa_tracks = data_structs["mapa_seguimiento"]
+    lobos = lt.iterator(mp.keySet(mapa_tracks)) # se saca la información por lobo
+    for lobo_id in lobos: 
         omap = me.getValue( mp.get(mapa_tracks,lobo_id)) # extraemos el order map  
         fechas = om.values(omap, om.minKey(omap), om.maxKey(omap)) # extraemos los valores de todas las fechas organizados retorna lista
         for posicion in range(1,lt.size(fechas)): #recorrer todas las fechas de la lista 
-            
+        
             seguimiento1= lt.getElement(fechas,posicion ) # datos del seguimiento de un lobo
             v_encuentro1 = str(round(float(seguimiento1["location-long"]),4)).replace(".", "p").replace("-", "m") + "_" + str(round(float(seguimiento1["location-lat"]),4)).replace(".", "p").replace("-", "m") # filtrar datos lat y long
             v_seguimiento1 = v_encuentro1 + "_" + seguimiento1["individual-local-identifier"] # juntamos todo con el id del animal (cramos representacion nodo)
@@ -138,10 +188,29 @@ def conexiones_tracks (data_structs):  # se van a conectar los tracks por lobo
             paso5_formula = math.sqrt(float(paso4_formula))
             distancia = 2 * math.asin(paso5_formula)*6371
             
-            gr.addEdge (data_structs["grafo_general"],v_seguimiento1, v_seguimiento2, round(distancia, 4)) #unir los puntos de seguimiento por lobo 
+            # v_seguimiento1 = v_seguimiento1 + "_" + str(lobo_id)
+            # v_seguimiento2 = v_seguimiento2 + "_" + str(lobo_id)
+            #print(v_encuentro1, v_encuentro2)
+            #print(v_seguimiento1, v_seguimiento2)
+            # print(gr.numVertices(data_structs["grafo_general"]))
+            # print(gr.vertices(data_structs["grafo_general"]))            
+            #print(gr.containsVertex(data_structs["grafo_general"], "m111p4828_56p7188_32263B"))
+            #print(gr.containsVertex(data_structs["grafo_general"], v_encuentro1))
+            #print(gr.containsVertex(data_structs["grafo_general"], v_encuentro2))
+            #print(gr.containsVertex(data_structs["grafo_general"], v_seguimiento1))
+            #print(gr.containsVertex(data_structs["grafo_general"], v_seguimiento2))
+            # print(gr.numVertices(data_structs["grafo_general"]))
             
-   
-             
+            gr.addEdge (data_structs["grafo_general"],v_seguimiento1, v_seguimiento2, round(distancia, 4)) #unir los puntos de seguimiento por lobo          
+            if gr.containsVertex(data_structs["grafo_general"], v_encuentro1):
+                gr.addEdge(data_structs["grafo_general"],v_seguimiento1, v_encuentro1, 0)
+            if (posicion== lt.size(fechas)-1):
+                if gr.containsVertex(data_structs["grafo_general"], v_encuentro2):
+                    gr.addEdge(data_structs["grafo_general"],v_seguimiento2, v_encuentro2, 0)
+                
+                
+           
+    return data_structs  
             
 
 # Funciones para creacion de datos
@@ -318,4 +387,15 @@ def primeros_ultimos(data_structs):
         tabla_menores["numero_encuentros"].append(lt.size(gr.adjacents(data_structs["grafo_general"],nodo_menores ))) # nodos adyacentes del nodo
         tabla_menores["long"].append(longitud)
         
-    return tabla_mayores, tabla_menores
+    return tabla_mayores, tabla_menores, data_structs  
+
+def cmp1 (node1_id, node2):
+    # print(node1_id)
+    # print(node2)
+    # print(node2["key"])
+    if node1_id < node2["key"]:
+        return -1
+    elif node1_id == node2["key"]:
+        return 0
+    else:
+        return 1
