@@ -97,8 +97,10 @@ def load_data(control, tamanio_lista):
     
     file_name1, filename2= arch(tamanio_lista)
     total_de_lobos_reconocidos,total_puntos_encuentro, tabla_mayor, tabla_menor = controller.load_data(control, file_name1, filename2)
-    print(total_de_lobos_reconocidos)
-    print(total_puntos_encuentro)
+    print("El total de lobos reconocidos en el estudio.", total_de_lobos_reconocidos)
+    print("El total de puntos de encuentro reconocidos. ",total_puntos_encuentro)
+    print("El total de puntos de encuentro reconocidos. ",total_puntos_encuentro)
+    
 
     return  tabla_mayor, tabla_menor
 

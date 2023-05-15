@@ -67,8 +67,8 @@ def new_data_structs():
                  "grafo_general": None, 
                  "mapa_seguimiento" :None, 
                  "nodos_encuentro": None,
-                 "nodo_seguimiento":None
-                
+                 "nodo_seguimiento":None,
+                "eventos": None
              }
 
     data_structs["mapa_lobos"] = mp.newMap()
@@ -77,6 +77,7 @@ def new_data_structs():
     data_structs["nodos_encuentro"] = lt.newList()
     data_structs["hash_puntos"] = mp.newMap()
     data_structs["nodo_seguimiento"] = lt.newList()
+    data_structs["eventos"] = lt.newList()
     return data_structs
 # Funciones para agregar informacion al modelo
 
@@ -127,6 +128,9 @@ def add_hash_puntos(data_structs, data):
             
         
 def add_data_tracks(data_structs, data): 
+    
+    lt.addLast(data_structs["eventos"], data)
+    
     
     mapa_tracks = data_structs["mapa_seguimiento"] # cramos mapa de seguimiento con los id de los lobos 
     time_stamp = int(datetime.datetime.strptime(data["timestamp"], "%Y-%m-%d %H:%M").timestamp()) # tiempo en el que pasó 
@@ -201,12 +205,22 @@ def conexiones_tracks (data_structs):  # se van a conectar los tracks por lobo
             #print(gr.containsVertex(data_structs["grafo_general"], v_seguimiento2))
             # print(gr.numVertices(data_structs["grafo_general"]))
             
-            gr.addEdge (data_structs["grafo_general"],v_seguimiento1, v_seguimiento2, round(distancia, 4)) #unir los puntos de seguimiento por lobo          
+            gr.addEdge(data_structs["grafo_general"],v_seguimiento1, v_seguimiento2, round(distancia, 4)) #unir los puntos de seguimiento por lobo          
             if gr.containsVertex(data_structs["grafo_general"], v_encuentro1):
-                gr.addEdge(data_structs["grafo_general"],v_seguimiento1, v_encuentro1, 0)
+                centinela = False
+                for i in lt.iterator(gr.adjacents(data_structs["grafo_general"], v_encuentro1)):
+                    if i == v_seguimiento1:
+                        centinela = True
+                if centinela == False:
+                     gr.addEdge(data_structs["grafo_general"],v_seguimiento1, v_encuentro1, 0)
             if (posicion== lt.size(fechas)-1):
                 if gr.containsVertex(data_structs["grafo_general"], v_encuentro2):
-                    gr.addEdge(data_structs["grafo_general"],v_seguimiento2, v_encuentro2, 0)
+                    centinela = False
+                    for i in lt.iterator(gr.adjacents(data_structs["grafo_general"], v_encuentro2)):
+                        if i == v_seguimiento2:
+                            centinela = True   
+                    if centinela == False:                                        
+                        gr.addEdge(data_structs["grafo_general"],v_seguimiento2, v_encuentro2, 0)
                 
                 
            
@@ -350,10 +364,21 @@ def total_lobos_registrados(data_structs):
 def  total_puntos_encuentro(data_structs):
     return lt.size(data_structs["nodos_encuentro"])
 
+def total_de_lobos_presentes (data_structs):
+    return 
+    
+
 def primeros_ultimos(data_structs): 
     
     mayores =  lt.subList(data_structs["nodos_encuentro"], 1, 5) 
     menores = lt.subList(data_structs["nodos_encuentro"],(lt.size(data_structs["nodos_encuentro"])-4) , 5)
+    
+    suma = 0 # tercero
+    for i in lt.iterator(mp.keySet(data_structs["hash_puntos"])):
+        tamanio = lt.size(me.getValue(mp.get(data_structs["hash_puntos"] ,i )))
+        if tamanio>1:
+            suma+=tamanio
+    print(suma)
 
     tabla_mayores = {}
     tabla_mayores["Identificador_punto_encuentro "] = []
@@ -367,6 +392,7 @@ def primeros_ultimos(data_structs):
         lon = float(str(nodo_mayores).split("_")[0].replace("p", ".").replace("m","-"))
         longitud = lon
         tabla_mayores["Lat"].append(latitud)
+        print()
         tabla_mayores["numero_encuentros"].append( lt.size(gr.adjacents(data_structs["grafo_general"],nodo_mayores ))) # nodos adyacentes del nodo
         tabla_mayores["long"].append(longitud)
         
@@ -387,7 +413,7 @@ def primeros_ultimos(data_structs):
         tabla_menores["numero_encuentros"].append(lt.size(gr.adjacents(data_structs["grafo_general"],nodo_menores ))) # nodos adyacentes del nodo
         tabla_menores["long"].append(longitud)
         
-    return tabla_mayores, tabla_menores, data_structs  
+    return tabla_mayores, tabla_menores, data_structs
 
 def cmp1 (node1_id, node2):
     # print(node1_id)
